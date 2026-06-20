@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { IP_DE_TU_PC } from "../config/api";
+import { API_URL } from "../config/api";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -29,19 +29,16 @@ export default function LoginScreen() {
 
     try {
       setCargando(true);
-      const respuesta = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/auth/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: email.trim(),
-            password: password,
-          }),
+      const respuesta = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password,
+        }),
+      });
 
       const datos = await respuesta.json();
 
@@ -76,7 +73,7 @@ export default function LoginScreen() {
       console.log(error);
       Alert.alert(
         "Error de conexión",
-        "No se pudo conectar al servidor. Revisa que el backend esté encendido y la IP sea correcta.",
+        "No se pudo conectar al servidor. Revisa tu conexión a internet.",
       );
     } finally {
       setCargando(false);
@@ -96,7 +93,6 @@ export default function LoginScreen() {
               UPTAIET
             </Text>
           </View>
-          {/* 👇 AQUÍ SE CORRIGIÓ EL ERROR (tracking-widest en vez de tracking-[0.3em]) 👇 */}
           <Text className="text-cyan-400 font-bold text-xs mt-4 uppercase tracking-widest text-center">
             Control de Accesos
           </Text>

@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { IP_DE_TU_PC } from "./config/api";
+import { API_URL } from "./config/api";
 
 export default function CuposScreen() {
   const [cargando, setCargando] = useState(true);
@@ -22,9 +22,7 @@ export default function CuposScreen() {
 
   const cargarDatos = async () => {
     try {
-      const respuesta = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/registros/estadisticas`,
-      );
+      const respuesta = await fetch(`${API_URL}/registros/estadisticas`);
       if (respuesta.ok) {
         const datos = await respuesta.json();
         setStats(datos);

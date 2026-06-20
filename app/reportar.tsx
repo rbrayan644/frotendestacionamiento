@@ -16,9 +16,12 @@ import {
 } from "react-native";
 
 import GeneradorPDF from "./components/GeneradorPDF"; // <-- IMPORTAMOS EL COMPONENTE
-import { IP_DE_TU_PC } from "./config/api";
+import { API_URL } from "./config/api"; // <-- ACTUALIZADO A LA NUBE
 
 export default function ReportarScreen() {
+  // ==========================================
+  // ESTADOS GLOBALES DE LA PANTALLA
+  // ==========================================
   const [asunto, setAsunto] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [placaRelacionada, setPlacaRelacionada] = useState("");
@@ -27,7 +30,11 @@ export default function ReportarScreen() {
   // Estado para guardar el nombre del vigilante para la firma del PDF
   const [nombreVigilante, setNombreVigilante] = useState("Vigilante de Turno");
 
-  // Cargar el nombre del vigilante al abrir la pantalla
+  // ==========================================
+  // EFECTOS (CARGA INICIAL)
+  // ==========================================
+
+  // Cargar el nombre del vigilante al abrir la pantalla para usarlo en el PDF
   useEffect(() => {
     const cargarNombre = async () => {
       const nombre = await AsyncStorage.getItem("userName");
@@ -36,6 +43,14 @@ export default function ReportarScreen() {
     cargarNombre();
   }, []);
 
+  // ==========================================
+  // FUNCIONES PRINCIPALES
+  // ==========================================
+
+  /**
+   * Envía el reporte de incidencia a la base de datos en Vercel.
+   * Valida que los campos obligatorios estén llenos antes de enviar.
+   */
   const enviarReporte = async () => {
     if (!asunto.trim() || !descripcion.trim()) {
       return Alert.alert(
@@ -59,19 +74,17 @@ export default function ReportarScreen() {
       // Limpiamos la placa por si el vigilante la escribió en minúsculas o con espacios
       const placaLimpia = placaRelacionada.trim().toUpperCase();
 
-      const respuesta = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/reportes/crear`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            vigilanteId,
-            asunto,
-            descripcion,
-            placaRelacionada: placaLimpia,
-          }),
-        },
-      );
+      // Petición a Vercel para guardar el reporte
+      const respuesta = await fetch(`${API_URL}/reportes/crear`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vigilanteId,
+          asunto,
+          descripcion,
+          placaRelacionada: placaLimpia,
+        }),
+      });
 
       if (respuesta.ok) {
         Alert.alert(
@@ -85,14 +98,18 @@ export default function ReportarScreen() {
     } catch (error) {
       Alert.alert(
         "Error de conexión",
-        "Revisa que tu servidor esté encendido.",
+        "Revisa tu conexión a internet, no se pudo conectar al servidor.",
       );
     } finally {
       setEnviando(false);
     }
   };
 
-  // --- PREPARAMOS LOS DATOS EN VIVO PARA EL PDF ---
+  // ==========================================
+  // PREPARACIÓN DE DATOS PARA PDF
+  // ==========================================
+
+  // Variable para habilitar el botón de PDF solo si el formulario está lleno
   const formularioLleno =
     asunto.trim().length > 0 && descripcion.trim().length > 0;
 
@@ -105,6 +122,9 @@ export default function ReportarScreen() {
     },
   ];
 
+  // ==========================================
+  // INTERFAZ GRÁFICA (UI)
+  // ==========================================
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}

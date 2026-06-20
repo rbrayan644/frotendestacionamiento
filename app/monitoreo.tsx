@@ -5,21 +5,24 @@ import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import GeneradorPDF from "./components/GeneradorPDF";
-import { IP_DE_TU_PC } from "./config/api";
+import { API_URL } from "./config/api";
 
 export default function MonitoreoScreen() {
+  // ==========================================
+  // ESTADOS
+  // ==========================================
   const [logsOriginales, setLogsOriginales] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
   const [miRol, setMiRol] = useState("");
@@ -30,6 +33,10 @@ export default function MonitoreoScreen() {
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
   const [mostrarCalendario, setMostrarCalendario] = useState(false);
 
+  /**
+   * Carga la bitácora de auditoría desde el backend.
+   * Filtra automáticamente según el rol del usuario (Admin o SuperAdmin).
+   */
   const cargarAuditoria = async () => {
     try {
       setCargando(true);
@@ -41,9 +48,8 @@ export default function MonitoreoScreen() {
 
       if (!rol) return setCargando(false);
 
-      const respuesta = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/auditoria/${rol}`,
-      );
+      // Petición a Vercel
+      const respuesta = await fetch(`${API_URL}/auditoria/${rol}`);
       const datos = await respuesta.json();
 
       if (respuesta.ok) {
@@ -61,7 +67,10 @@ export default function MonitoreoScreen() {
     cargarAuditoria();
   }, []);
 
-  // --- ARREGLO DE FECHA (Usamos .fecha que es lo que manda tu backend) ---
+  // ==========================================
+  // FUNCIONES DE APOYO
+  // ==========================================
+
   const obtenerFecha = (fechaTexto: string) => {
     if (!fechaTexto) return null;
     const d = new Date(fechaTexto);
@@ -76,6 +85,9 @@ export default function MonitoreoScreen() {
     }
   };
 
+  // ==========================================
+  // LÓGICA DE FILTRADO
+  // ==========================================
   let logsFiltrados = logsOriginales;
   const ahora = new Date();
   const inicioHoy = new Date(
@@ -85,40 +97,45 @@ export default function MonitoreoScreen() {
   ).getTime();
   const inicioSemana = inicioHoy - 7 * 24 * 60 * 60 * 1000;
 
-  // --- FILTRADO CORREGIDO ---
   if (filtroTiempo === "HOY") {
     logsFiltrados = logsOriginales.filter((item) => {
-      const d = obtenerFecha(item.fecha); // Cambiado createdAt -> fecha
+      const d = obtenerFecha(item.fecha);
       return d ? d.getTime() >= inicioHoy : false;
     });
   } else if (filtroTiempo === "SEMANA") {
     logsFiltrados = logsOriginales.filter((item) => {
-      const d = obtenerFecha(item.fecha); // Cambiado createdAt -> fecha
+      const d = obtenerFecha(item.fecha);
       return d ? d.getTime() >= inicioSemana : false;
     });
   } else if (filtroTiempo === "DIA_ESPECIFICO") {
     logsFiltrados = logsOriginales.filter((item) => {
-      const d = obtenerFecha(item.fecha); // Cambiado createdAt -> fecha
+      const d = obtenerFecha(item.fecha);
       if (!d) return false;
       return d.toDateString() === fechaSeleccionada.toDateString();
     });
   }
 
+  // Filtrado por buscador
   if (busqueda.trim() !== "") {
     const término = busqueda.toLowerCase();
     logsFiltrados = logsFiltrados.filter((item) => {
-      const usuarioStr = item.usuario?.toLowerCase() || ""; // Cambiado actor.nombre -> usuario
+      const usuarioStr = item.usuario?.toLowerCase() || "";
       const accionStr = item.accion?.toLowerCase() || "";
       return usuarioStr.includes(término) || accionStr.includes(término);
     });
   }
 
+  // Preparación de datos para el reporte PDF
   const datosParaPDF = logsFiltrados.map((log) => ({
-    usuario: log.usuario || "Desconocido", // Cambiado actor.nombre -> usuario
-    rol: log.rol || "N/A", // Cambiado actor.rol -> rol
+    usuario: log.usuario || "Desconocido",
+    rol: log.rol || "N/A",
     accion: log.accion,
-    fecha: log.fecha, // Cambiado createdAt -> fecha
+    fecha: log.fecha,
   }));
+
+  // ==========================================
+  // INTERFAZ GRÁFICA (UI)
+  // ==========================================
 
   const getIconoAccion = (accion: string) => {
     if (accion.includes("ENTRADA"))

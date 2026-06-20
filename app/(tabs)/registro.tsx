@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { IP_DE_TU_PC } from "../config/api";
+import { API_URL } from "../config/api";
 
 export default function RegistroScreen() {
   const [nombre, setNombre] = useState("");
@@ -30,28 +30,26 @@ export default function RegistroScreen() {
 
     try {
       setCargando(true);
-      const respuesta = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/auth/registrar`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            nombre: nombre,
-            email: email.trim(),
-            password: password,
-            rol: rol,
-          }),
+      const respuesta = await fetch(`${API_URL}/auth/registrar`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          nombre: nombre,
+          email: email.trim(),
+          password: password,
+          rol: rol,
+        }),
+      });
 
       const datos = await respuesta.json();
 
       if (respuesta.ok) {
+        // 👇 AQUÍ ESTÁ EL CAMBIO: Mensaje más claro sobre la sala de espera 👇
         Alert.alert(
-          "¡Éxito!",
-          "Usuario registrado correctamente en el sistema.",
+          "¡Solicitud Enviada!",
+          "Tu cuenta fue creada exitosamente, pero requiere APROBACIÓN. Un administrador debe autorizar tu acceso para poder iniciar sesión.",
         );
         router.back();
       } else {
@@ -75,13 +73,12 @@ export default function RegistroScreen() {
         <View className="items-center justify-center pt-20 pb-10 px-6">
           <View className="flex-row items-center">
             <Text className="text-6xl font-black text-white tracking-tighter">
-              UPT
+              UPTAIET
             </Text>
             <View className="bg-yellow-400 px-3 py-1.5 ml-2 rounded-xl shadow-lg">
-              <Text className="text-slate-900 font-extrabold text-2xl">AI</Text>
+              <Text className="text-slate-900 font-extrabold text-2xl"></Text>
             </View>
           </View>
-          {/* 👇 AQUÍ SE CORRIGIÓ EL ERROR (tracking-widest en vez de tracking-[0.2em]) 👇 */}
           <Text className="text-cyan-400 font-bold text-xs mt-3 uppercase tracking-widest text-center">
             Alta de Personal
           </Text>
@@ -188,7 +185,7 @@ export default function RegistroScreen() {
               ) : (
                 <>
                   <Text className="text-center text-white font-black text-sm uppercase tracking-widest mr-2">
-                    Registrar Usuario
+                    Enviar Solicitud
                   </Text>
                   <Ionicons name="checkmark-circle" size={20} color="white" />
                 </>

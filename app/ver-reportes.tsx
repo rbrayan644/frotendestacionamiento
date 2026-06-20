@@ -17,28 +17,37 @@ import {
 } from "react-native";
 
 import GeneradorPDF from "./components/GeneradorPDF";
-import { IP_DE_TU_PC } from "./config/api";
+import { API_URL } from "./config/api"; // <-- ACTUALIZADO A LA NUBE
 
 export default function VerReportesScreen() {
+  // ==========================================
+  // ESTADOS GLOBALES DE LA PANTALLA
+  // ==========================================
   const [reportesOriginales, setReportesOriginales] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
   const [nombreAdmin, setNombreAdmin] = useState("Administrador");
 
-  // --- ESTADOS PARA FILTROS DE TIEMPO ---
+  // Estados para filtros de tiempo y calendario
   const [filtroTiempo, setFiltroTiempo] = useState("TODOS");
   const [modalMesVisible, setModalMesVisible] = useState(false);
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
   const [mostrarCalendario, setMostrarCalendario] = useState(false);
 
+  // ==========================================
+  // FUNCIONES PRINCIPALES
+  // ==========================================
+
+  /**
+   * Carga todos los reportes de incidencias desde la base de datos en Vercel.
+   */
   const cargarReportes = async () => {
     try {
       setCargando(true);
       const nombre = await AsyncStorage.getItem("userName");
       if (nombre) setNombreAdmin(nombre);
 
-      const respuesta = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/reportes/todos`,
-      );
+      // Petición a la nube
+      const respuesta = await fetch(`${API_URL}/reportes/todos`);
       const datos = await respuesta.json();
 
       if (respuesta.ok) {
@@ -52,25 +61,31 @@ export default function VerReportesScreen() {
     }
   };
 
+  // Carga inicial al entrar a la pantalla
   useEffect(() => {
     cargarReportes();
   }, []);
 
+  /**
+   * Cambia el estado de un reporte de "PENDIENTE" a "REVISADO".
+   */
   const marcarComoRevisado = async (id: string) => {
     try {
-      const res = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/reportes/revisar/${id}`,
-        { method: "PUT" },
-      );
+      const res = await fetch(`${API_URL}/reportes/revisar/${id}`, {
+        method: "PUT",
+      });
       if (res.ok) {
         Alert.alert("Listo", "Reporte marcado como revisado.");
-        cargarReportes();
+        cargarReportes(); // Recargar la lista para reflejar el cambio
       }
     } catch (error) {
       Alert.alert("Error", "No se pudo actualizar el estado.");
     }
   };
 
+  /**
+   * Elimina permanentemente un reporte de la base de datos tras confirmar.
+   */
   const confirmarEliminar = (id: string) => {
     Alert.alert(
       "Eliminar Reporte",
@@ -82,11 +97,11 @@ export default function VerReportesScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              const res = await fetch(
-                `http://${IP_DE_TU_PC}:3000/api/reportes/eliminar/${id}`,
-                { method: "DELETE" },
-              );
+              const res = await fetch(`${API_URL}/reportes/eliminar/${id}`, {
+                method: "DELETE",
+              });
               if (res.ok)
+                // Actualiza la vista eliminando el reporte de la lista local
                 setReportesOriginales((prev) =>
                   prev.filter((item) => item._id !== id),
                 );
@@ -99,12 +114,15 @@ export default function VerReportesScreen() {
     );
   };
 
+  // ==========================================
+  // FUNCIONES DE APOYO Y FILTROS DE TIEMPO
+  // ==========================================
+
   const formatearFecha = (fechaTexto: string) => {
     const fecha = new Date(fechaTexto);
     return `${fecha.getDate().toString().padStart(2, "0")}/${(fecha.getMonth() + 1).toString().padStart(2, "0")}/${fecha.getFullYear()} a las ${fecha.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   };
 
-  // --- LÓGICA DE FILTRADO ---
   const obtenerFecha = (fechaTexto: string) => {
     if (!fechaTexto) return null;
     const d = new Date(fechaTexto);
@@ -143,6 +161,7 @@ export default function VerReportesScreen() {
 
   const mesesDisponibles = obtenerMesesDisponibles() as string[];
 
+  // Aplicación de los filtros de tiempo a la lista de reportes
   let reportesFiltrados = reportesOriginales;
   const ahora = new Date();
   const inicioHoy = new Date(
@@ -185,6 +204,10 @@ export default function VerReportesScreen() {
     estado: r.estado,
     fecha: r.createdAt,
   }));
+
+  // ==========================================
+  // RENDERIZADO DE COMPONENTES DE LA LISTA
+  // ==========================================
 
   const renderReporte = ({ item }: { item: any }) => {
     const esPendiente = item.estado === "PENDIENTE";
@@ -267,6 +290,9 @@ export default function VerReportesScreen() {
     );
   };
 
+  // ==========================================
+  // INTERFAZ GRÁFICA PRINCIPAL (UI)
+  // ==========================================
   return (
     <View className="flex-1 bg-slate-50">
       {/* CABECERA */}
@@ -288,7 +314,7 @@ export default function VerReportesScreen() {
           </View>
         </View>
 
-        {/* FILTROS DE TIEMPO (IGUAL QUE EN HISTORIAL) */}
+        {/* FILTROS DE TIEMPO */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}

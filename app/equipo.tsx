@@ -12,24 +12,39 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
-import { IP_DE_TU_PC } from "./config/api";
+import { API_URL } from "./config/api";
 
 export default function EquipoScreen() {
+  // ==========================================
+  // ESTADOS (VARIABLES GLOBALES DE LA PANTALLA)
+  // ==========================================
   const [cargando, setCargando] = useState(true);
   const [vigilantes, setVigilantes] = useState<any[]>([]);
+
+  // Estados para el Modal de Crear Usuario
   const [modalCrearVisible, setModalCrearVisible] = useState(false);
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // Estados para el Modal de Cambiar Clave
   const [modalClaveVisible, setModalClaveVisible] = useState(false);
   const [vigilanteSeleccionado, setVigilanteSeleccionado] = useState<any>(null);
   const [nuevaClave, setNuevaClave] = useState("");
 
-  // --- NUEVO: Estado para guardar el ID del Administrador logueado ---
+  // Estado para guardar el ID del Administrador que está usando la app
   const [adminId, setAdminId] = useState<string | null>(null);
 
+  // ==========================================
+  // FUNCIONES PRINCIPALES
+  // ==========================================
+
+  /**
+   * Carga la lista inicial de vigilantes desde la base de datos
+   * y guarda quién es el Administrador actual.
+   */
   const cargarDatosIniciales = async () => {
     try {
       setCargando(true);
@@ -37,9 +52,8 @@ export default function EquipoScreen() {
       const id = await AsyncStorage.getItem("userId");
       setAdminId(id);
 
-      const resVig = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/auth/usuarios/vigilantes`,
-      );
+      // Pedimos la lista de vigilantes a Vercel
+      const resVig = await fetch(`${API_URL}/auth/usuarios/vigilantes`);
       if (resVig.ok) {
         const datosVig = await resVig.json();
         setVigilantes(datosVig);
@@ -51,42 +65,48 @@ export default function EquipoScreen() {
     }
   };
 
+  // Se ejecuta automáticamente al abrir esta pantalla
   useEffect(() => {
     cargarDatosIniciales();
   }, []);
 
+  /**
+   * Crea un nuevo vigilante en la base de datos
+   */
   const handleCrearVigilante = async () => {
     if (!nombre || !email || !password)
       return Alert.alert("Error", "Llena todos los campos.");
+
     try {
-      const respuesta = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/auth/registrar`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          // 👉 ENVIAMOS EL creadorId PARA LA AUDITORÍA
-          body: JSON.stringify({
-            nombre,
-            email,
-            password,
-            rol: "VIGILANTE",
-            creadorId: adminId,
-          }),
-        },
-      );
+      const respuesta = await fetch(`${API_URL}/auth/registrar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        //  ENVIAMOS EL creadorId PARA QUE EL SISTEMA DE AUDITORÍA SEPA QUIÉN LO CREÓ
+        body: JSON.stringify({
+          nombre,
+          email,
+          password,
+          rol: "VIGILANTE",
+          creadorId: adminId,
+        }),
+      });
+
       if (respuesta.ok) {
         Alert.alert("¡Éxito!", `Vigilante ${nombre} creado.`);
         setModalCrearVisible(false);
         setNombre("");
         setEmail("");
         setPassword("");
-        cargarDatosIniciales();
+        cargarDatosIniciales(); // Recargamos la lista para ver al nuevo
       }
     } catch (error) {
       Alert.alert("Error", "Fallo al registrar.");
     }
   };
 
+  /**
+   * Elimina un vigilante del sistema, pidiendo confirmación previa
+   */
   const handleEliminar = (id: string, nombreVig: string) => {
     Alert.alert(
       "Eliminar Acceso",
@@ -97,33 +117,38 @@ export default function EquipoScreen() {
           text: "Sí, Eliminar",
           style: "destructive",
           onPress: async () => {
-            // 👉 ENVIAMOS EL adminId EN EL BODY PARA QUE EL BACKEND SEPA QUIÉN BORRÓ
-            await fetch(`http://${IP_DE_TU_PC}:3000/api/auth/usuarios/${id}`, {
+            //  ENVIAMOS EL adminId EN EL BODY PARA QUE QUEDE REGISTRADO QUIÉN LO BORRÓ
+            await fetch(`${API_URL}/auth/usuarios/${id}`, {
               method: "DELETE",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ adminId: adminId }),
             });
-            cargarDatosIniciales();
+            cargarDatosIniciales(); // Recargamos la lista para ver el cambio
           },
         },
       ],
     );
   };
 
+  /**
+   * Actualiza la contraseña de un vigilante específico
+   */
   const handleCambiarClave = async () => {
     if (nuevaClave.length < 6) return Alert.alert("Error", "Clave muy corta.");
+
     const res = await fetch(
-      `http://${IP_DE_TU_PC}:3000/api/auth/usuarios/${vigilanteSeleccionado._id}/password`,
+      `${API_URL}/auth/usuarios/${vigilanteSeleccionado._id}/password`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        // 👉 ENVIAMOS EL adminId PARA LA AUDITORÍA
+        //  ENVIAMOS EL adminId PARA QUE QUEDE REGISTRADO QUIÉN CAMBIÓ LA CLAVE
         body: JSON.stringify({
           nuevaPassword: nuevaClave,
           adminId: adminId,
         }),
       },
     );
+
     if (res.ok) {
       Alert.alert("Listo", "Clave actualizada.");
       setModalClaveVisible(false);
@@ -131,8 +156,12 @@ export default function EquipoScreen() {
     }
   };
 
+  // ==========================================
+  // INTERFAZ GRÁFICA (UI)
+  // ==========================================
   return (
     <View className="flex-1 bg-slate-50">
+      {/* --- CABECERA --- */}
       <View className="pt-14 pb-8 px-6 bg-slate-900 rounded-b-[40px] shadow-xl flex-row items-center">
         <TouchableOpacity
           onPress={() => router.back()}
@@ -151,6 +180,7 @@ export default function EquipoScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 24 }}>
+        {/* --- BOTÓN NUEVO VIGILANTE --- */}
         <TouchableOpacity
           onPress={() => setModalCrearVisible(true)}
           className="bg-cyan-600 py-4 rounded-2xl items-center mb-6 shadow-md"
@@ -160,6 +190,7 @@ export default function EquipoScreen() {
           </Text>
         </TouchableOpacity>
 
+        {/* --- LISTA DE VIGILANTES --- */}
         {cargando ? (
           <ActivityIndicator color="#0891b2" />
         ) : (
@@ -174,6 +205,7 @@ export default function EquipoScreen() {
                 </Text>
                 <Text className="text-slate-400 text-xs">{v.email}</Text>
               </View>
+              {/* BOTONES DE ACCIÓN POR CADA VIGILANTE */}
               <View className="flex-row space-x-2">
                 <TouchableOpacity
                   onPress={() => {
@@ -196,7 +228,9 @@ export default function EquipoScreen() {
         )}
       </ScrollView>
 
-      {/* MODAL CREAR */}
+      {/* ========================================== */}
+      {/* MODAL: FORMULARIO PARA CREAR VIGILANTE     */}
+      {/* ========================================== */}
       <Modal visible={modalCrearVisible} animationType="slide" transparent>
         <KeyboardAvoidingView
           behavior="padding"
@@ -204,26 +238,31 @@ export default function EquipoScreen() {
         >
           <View className="bg-white rounded-t-[40px] p-8 h-[70%]">
             <Text className="text-2xl font-black mb-6">Nuevo Usuario</Text>
+
             <TextInput
-              className="bg-slate-50 p-4 rounded-2xl mb-4 border border-slate-200"
+              className="bg-slate-50 p-4 rounded-2xl mb-4 border border-slate-200 text-slate-800 font-medium"
               placeholder="Nombre"
+              placeholderTextColor="#94a3b8"
               value={nombre}
               onChangeText={setNombre}
             />
             <TextInput
-              className="bg-slate-50 p-4 rounded-2xl mb-4 border border-slate-200"
+              className="bg-slate-50 p-4 rounded-2xl mb-4 border border-slate-200 text-slate-800 font-medium"
               placeholder="Email"
+              placeholderTextColor="#94a3b8"
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
             />
             <TextInput
-              className="bg-slate-50 p-4 rounded-2xl mb-6 border border-slate-200"
+              className="bg-slate-50 p-4 rounded-2xl mb-6 border border-slate-200 text-slate-800 font-medium"
               placeholder="Password"
+              placeholderTextColor="#94a3b8"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
             />
+
             <TouchableOpacity
               onPress={handleCrearVigilante}
               className="bg-cyan-600 py-4 rounded-2xl"
@@ -244,20 +283,25 @@ export default function EquipoScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* MODAL CLAVE */}
+      {/* ========================================== */}
+      {/* MODAL: FORMULARIO PARA CAMBIAR CLAVE       */}
+      {/* ========================================== */}
       <Modal visible={modalClaveVisible} animationType="fade" transparent>
         <View className="flex-1 justify-center items-center bg-black/60 px-6">
           <View className="bg-white rounded-[40px] p-8 w-full">
             <Text className="text-xl font-black mb-4 text-center">
               Nueva Clave para {vigilanteSeleccionado?.nombre}
             </Text>
+
             <TextInput
-              className="bg-slate-50 p-4 rounded-2xl mb-6 border border-slate-200"
+              className="bg-slate-50 p-4 rounded-2xl mb-6 border border-slate-200 text-slate-800 font-medium"
               placeholder="Mínimo 6 caracteres"
+              placeholderTextColor="#94a3b8"
               value={nuevaClave}
               onChangeText={setNuevaClave}
               secureTextEntry
             />
+
             <TouchableOpacity
               onPress={handleCambiarClave}
               className="bg-amber-500 py-4 rounded-2xl"

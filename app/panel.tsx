@@ -18,11 +18,15 @@ import {
 
 import { CameraView, useCameraPermissions } from "expo-camera";
 import HerramientasPanel from "./components/HerramientasPanel";
-import { IP_DE_TU_PC } from "./config/api";
+import { API_URL } from "./config/api"; // <-- Actualizado a la nube
 
 export default function PanelScreen() {
+  // ==========================================
+  // ESTADOS GLOBALES DE LA PANTALLA
+  // ==========================================
   const [modoAccion, setModoAccion] = useState("ENTRADA");
 
+  // Campos del formulario del vehículo/conductor
   const [placa, setPlaca] = useState("");
   const [cedula, setCedula] = useState("");
   const [tipoVehiculo, setTipoVehiculo] = useState("CARRO");
@@ -35,24 +39,30 @@ export default function PanelScreen() {
   const [carrera, setCarrera] = useState("");
   const [pnf, setPnf] = useState("");
 
+  // Cámara y Escaneo
   const [fotoCapturada, setFotoCapturada] = useState<string | null>(null);
   const [qrCarnet, setQrCarnet] = useState("");
-
   const [permisoCamara, pedirPermisoCamara] = useCameraPermissions();
   const [tipoEscaneo, setTipoEscaneo] = useState<"NONE" | "OCR" | "QR">("NONE");
   const [procesandoCamara, setProcesandoCamara] = useState(false);
   const cameraRef = useRef<any>(null);
 
+  // Estadísticas de ocupación para bloquear entradas si está lleno
   const [stats, setStats] = useState({
     carros: { disponibles: 45, capacidad: 45 },
     motos: { disponibles: 100, capacidad: 100 },
   });
 
+  // ==========================================
+  // FUNCIONES DE CARGA Y BÚSQUEDA
+  // ==========================================
+
+  /**
+   * Consulta a Vercel la cantidad de cupos disponibles.
+   */
   const cargarEstadisticas = async () => {
     try {
-      const res = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/registros/estadisticas`,
-      );
+      const res = await fetch(`${API_URL}/registros/estadisticas`);
       if (res.ok) {
         const datos = await res.json();
         setStats(datos);
@@ -62,12 +72,16 @@ export default function PanelScreen() {
     }
   };
 
+  // Se ejecuta cada vez que el usuario entra a esta pantalla
   useFocusEffect(
     useCallback(() => {
       cargarEstadisticas();
     }, []),
   );
 
+  /**
+   * Busca si una placa ya existe en la base de datos para autocompletar el formulario.
+   */
   const handleBuscarPlaca = async (placaABuscar = placa) => {
     if (!placaABuscar) {
       return Alert.alert(
@@ -80,11 +94,12 @@ export default function PanelScreen() {
 
     try {
       const respuesta = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/registros/buscar/${placaLimpia}`,
+        `${API_URL}/registros/buscar/${placaLimpia}`,
       );
       const datos = await respuesta.json();
 
       if (datos.existe) {
+        // Autocompleta los campos
         setPlaca(placaLimpia);
         setCedula(datos.conductor.cedula || "");
         setTipoVehiculo(datos.conductor.tipoVehiculo || "CARRO");
@@ -112,6 +127,13 @@ export default function PanelScreen() {
     }
   };
 
+  // ==========================================
+  // FUNCIONES DE REGISTRO (ENTRADA / SALIDA)
+  // ==========================================
+
+  /**
+   * Envía a la base de datos la solicitud de ingreso al estacionamiento.
+   */
   const handleRegistrarEntrada = async () => {
     if (!placa || !cedula || !marca || !modelo || !nombres || !apellidos) {
       return Alert.alert(
@@ -120,6 +142,7 @@ export default function PanelScreen() {
       );
     }
 
+    // Verificación de capacidad máxima
     if (tipoVehiculo === "CARRO" && stats.carros.disponibles <= 0) {
       return Alert.alert(
         "⛔ Estacionamiento Lleno",
@@ -141,28 +164,25 @@ export default function PanelScreen() {
       if (!vigilanteIdReal)
         return Alert.alert("Error", "No se encontró tu ID.");
 
-      const respuesta = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/registros/entrada`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            placa: placaLimpia,
-            cedula: cedulaLimpia,
-            tipoVehiculo,
-            marca,
-            modelo,
-            nombres,
-            apellidos,
-            tipo: tipoConductor,
-            trayecto: tipoConductor === "ESTUDIANTE" ? trayecto : null,
-            carrera: tipoConductor === "ESTUDIANTE" ? carrera : null,
-            pnf: tipoConductor === "PROFESOR" ? pnf : null,
-            vigilanteId: vigilanteIdReal,
-            qrCarnet,
-          }),
-        },
-      );
+      const respuesta = await fetch(`${API_URL}/registros/entrada`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          placa: placaLimpia,
+          cedula: cedulaLimpia,
+          tipoVehiculo,
+          marca,
+          modelo,
+          nombres,
+          apellidos,
+          tipo: tipoConductor,
+          trayecto: tipoConductor === "ESTUDIANTE" ? trayecto : null,
+          carrera: tipoConductor === "ESTUDIANTE" ? carrera : null,
+          pnf: tipoConductor === "PROFESOR" ? pnf : null,
+          vigilanteId: vigilanteIdReal,
+          qrCarnet,
+        }),
+      });
 
       const datos = await respuesta.json();
       if (respuesta.ok) {
@@ -177,6 +197,9 @@ export default function PanelScreen() {
     }
   };
 
+  /**
+   * Envía a la base de datos la solicitud de salida del estacionamiento.
+   */
   const handleRegistrarSalida = async () => {
     if (!placa) return Alert.alert("Falta la placa", "Escribe la placa.");
 
@@ -184,17 +207,14 @@ export default function PanelScreen() {
 
     try {
       const vigilanteIdReal = await AsyncStorage.getItem("userId");
-      const respuesta = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/registros/salida`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            placa: placaLimpia,
-            vigilanteId: vigilanteIdReal,
-          }),
-        },
-      );
+      const respuesta = await fetch(`${API_URL}/registros/salida`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          placa: placaLimpia,
+          vigilanteId: vigilanteIdReal,
+        }),
+      });
 
       const datos = await respuesta.json();
       if (respuesta.ok) {
@@ -209,6 +229,9 @@ export default function PanelScreen() {
     }
   };
 
+  /**
+   * Limpia todos los campos de la pantalla.
+   */
   const limpiarFormulario = () => {
     setPlaca("");
     setCedula("");
@@ -223,6 +246,10 @@ export default function PanelScreen() {
     setQrCarnet("");
   };
 
+  // ==========================================
+  // FUNCIONES DE CÁMARA (QR y OCR)
+  // ==========================================
+
   const abrirCamara = async (modo: "OCR" | "QR") => {
     if (!permisoCamara?.granted) {
       const resultado = await pedirPermisoCamara();
@@ -235,13 +262,16 @@ export default function PanelScreen() {
     setTipoEscaneo(modo);
   };
 
+  /**
+   * Procesa la lectura de un código QR y busca sus datos.
+   */
   const handleLectorQR = async ({ data }: { data: string }) => {
     if (procesandoCamara) return;
     setProcesandoCamara(true);
 
     try {
       const res = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/registros/buscar-qr/${encodeURIComponent(data)}`,
+        `${API_URL}/registros/buscar-qr/${encodeURIComponent(data)}`,
       );
       const datosBD = await res.json();
 
@@ -278,6 +308,10 @@ export default function PanelScreen() {
     }
   };
 
+  /**
+   * Toma una foto de la placa y usa inteligencia artificial (OCR) para leer las letras.
+   * NOTA: Esta función se conecta a una API externa (ocr.space), no a Vercel.
+   */
   const capturarYLeerPlacaOCR = async () => {
     if (cameraRef.current) {
       setProcesandoCamara(true);
@@ -296,6 +330,7 @@ export default function PanelScreen() {
         form.append("scale", "true");
         form.append("OCREngine", "2");
 
+        // Petición a la API externa de lectura de placas (Se deja intacto)
         const respuesta = await fetch("https://api.ocr.space/parse/image", {
           method: "POST",
           body: form,
@@ -348,12 +383,16 @@ export default function PanelScreen() {
           }
         }
       } catch (error) {
-        Alert.alert("Error", "No se pudo conectar con el servidor.");
+        Alert.alert("Error", "No se pudo conectar con el servidor OCR.");
       } finally {
         setProcesandoCamara(false);
       }
     }
   };
+
+  // ==========================================
+  // INTERFAZ GRÁFICA (UI)
+  // ==========================================
 
   return (
     <KeyboardAvoidingView
@@ -365,12 +404,10 @@ export default function PanelScreen() {
           <View>
             <View className="flex-row items-center">
               <Text className="text-3xl font-black text-white tracking-tight">
-                UPT
+                UPTAIET
               </Text>
               <View className="bg-yellow-400 px-2 py-0.5 ml-1 rounded-md">
-                <Text className="text-slate-900 font-extrabold text-sm">
-                  AI
-                </Text>
+                <Text className="text-slate-900 font-extrabold text-sm"></Text>
               </View>
             </View>
             <Text className="text-cyan-400 font-medium text-sm mt-1 tracking-wide">
@@ -700,6 +737,7 @@ export default function PanelScreen() {
         </View>
       </ScrollView>
 
+      {/* ================= MODAL CÁMARA (Lector de Placas y QR) ================= */}
       <Modal visible={tipoEscaneo !== "NONE"} animationType="slide">
         <View className="flex-1 bg-black">
           <CameraView

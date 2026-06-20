@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import DateTimePicker from "@react-native-community/datetimepicker"; // <-- AÑADIDO
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
@@ -23,26 +23,32 @@ import {
 
 import { CameraView, useCameraPermissions } from "expo-camera";
 import GeneradorPDF from "./components/GeneradorPDF";
-import { IP_DE_TU_PC } from "./config/api";
+import { API_URL } from "./config/api";
 
 export default function HistorialScreen() {
+  // ==========================================
+  // ESTADOS GLOBALES DE LA PANTALLA
+  // ==========================================
   const [historialOriginal, setHistorialOriginal] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
   const [miRol, setMiRol] = useState("");
   const [nombreUsuario, setNombreUsuario] = useState("Usuario");
 
+  // Estados para filtros y búsqueda
   const [filtroTiempo, setFiltroTiempo] = useState("TODOS");
   const [placaExpandida, setPlacaExpandida] = useState<string | null>(null);
   const [modalMesVisible, setModalMesVisible] = useState(false);
   const [busqueda, setBusqueda] = useState("");
 
-  // --- NUEVOS ESTADOS PARA EL DÍA ESPECÍFICO ---
+  // Estados para selección de un día específico en el calendario
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
   const [mostrarCalendario, setMostrarCalendario] = useState(false);
 
+  // Estados para el Modal de Edición de Conductor
   const [modalEditarVisible, setModalEditarVisible] = useState(false);
   const [conductorEditando, setConductorEditando] = useState<any>(null);
 
+  // Estados de los campos del formulario de edición
   const [editNombres, setEditNombres] = useState("");
   const [editApellidos, setEditApellidos] = useState("");
   const [editCedula, setEditCedula] = useState("");
@@ -54,10 +60,19 @@ export default function HistorialScreen() {
   const [editTrayecto, setEditTrayecto] = useState("");
   const [editPnf, setEditPnf] = useState("");
 
+  // Estados para la lectura de códigos QR (Carnets)
   const [editQrCarnet, setEditQrCarnet] = useState("");
   const [escaneandoQR, setEscaneandoQR] = useState(false);
   const [permisoCamara, pedirPermisoCamara] = useCameraPermissions();
 
+  // ==========================================
+  // FUNCIONES PRINCIPALES
+  // ==========================================
+
+  /**
+   * Carga todo el historial de accesos desde el backend.
+   * Si es vigilante, carga solo los de su turno. Si es admin, carga todos.
+   */
   const cargarHistorial = async () => {
     try {
       setCargando(true);
@@ -70,8 +85,9 @@ export default function HistorialScreen() {
 
       if (!userId || !userRol) return setCargando(false);
 
+      // Petición a Vercel
       const respuesta = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/registros/historial/${userId}/${userRol}`,
+        `${API_URL}/registros/historial/${userId}/${userRol}`,
       );
       const datos = await respuesta.json();
 
@@ -88,6 +104,8 @@ export default function HistorialScreen() {
   useEffect(() => {
     cargarHistorial();
   }, []);
+
+  // --- UTILIDADES DE FECHAS Y TIEMPO ---
 
   const obtenerFecha = (fechaTexto: string) => {
     if (!fechaTexto) return null;
@@ -109,6 +127,11 @@ export default function HistorialScreen() {
     return `${minutos} min`;
   };
 
+  // --- FUNCIONES DE INTERACCIÓN (UI) ---
+
+  /**
+   * Expande o colapsa el historial detallado de un vehículo
+   */
   const toggleExpandir = (placa: string) => {
     if (
       Platform.OS === "ios" ||
@@ -119,7 +142,9 @@ export default function HistorialScreen() {
     setPlacaExpandida(placaExpandida === placa ? null : placa);
   };
 
-  // --- NUEVA FUNCIÓN PARA CAMBIAR FECHA ---
+  /**
+   * Cambia la fecha de búsqueda cuando el usuario usa el calendario nativo
+   */
   const cambiarFecha = (event: any, date?: Date) => {
     setMostrarCalendario(Platform.OS === "ios");
     if (date) {
@@ -128,6 +153,9 @@ export default function HistorialScreen() {
     }
   };
 
+  /**
+   * Elimina un registro de entrada/salida de la bitácora
+   */
   const confirmarEliminar = (idRegistro: string) => {
     Alert.alert(
       "Eliminar Registro",
@@ -139,10 +167,9 @@ export default function HistorialScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              const res = await fetch(
-                `http://${IP_DE_TU_PC}:3000/api/registros/${idRegistro}`,
-                { method: "DELETE" },
-              );
+              const res = await fetch(`${API_URL}/registros/${idRegistro}`, {
+                method: "DELETE",
+              });
               if (res.ok) {
                 setHistorialOriginal((prev) =>
                   prev.filter((item) => item._id !== idRegistro),
@@ -157,6 +184,11 @@ export default function HistorialScreen() {
     );
   };
 
+  // --- FUNCIONES DE EDICIÓN DE CONDUCTOR ---
+
+  /**
+   * Llena los campos del modal con los datos actuales del conductor para editarlos
+   */
   const abrirModalEditar = (conductor: any) => {
     setConductorEditando(conductor);
     setEditNombres(conductor.nombres || "");
@@ -174,10 +206,13 @@ export default function HistorialScreen() {
     setModalEditarVisible(true);
   };
 
+  /**
+   * Envía los datos editados del conductor al backend para actualizarlos
+   */
   const guardarEdicion = async () => {
     try {
       const res = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/registros/conductor/${conductorEditando._id}`,
+        `${API_URL}/registros/conductor/${conductorEditando._id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -200,7 +235,7 @@ export default function HistorialScreen() {
       if (res.ok) {
         Alert.alert("Éxito", "Datos actualizados correctamente.");
         setModalEditarVisible(false);
-        cargarHistorial();
+        cargarHistorial(); // Recargamos para ver los cambios
       } else {
         Alert.alert("Error", "No se pudo actualizar.");
       }
@@ -208,6 +243,8 @@ export default function HistorialScreen() {
       Alert.alert("Error", "Fallo de conexión al editar.");
     }
   };
+
+  // --- FUNCIONES DEL LECTOR QR ---
 
   const abrirCamaraQR = async () => {
     if (!permisoCamara?.granted) {
@@ -226,6 +263,8 @@ export default function HistorialScreen() {
       "El código se ha leído con éxito. Recuerda presionar 'Guardar Cambios' al final.",
     );
   };
+
+  // --- LÓGICA DE FILTRADO (Buscador y Tiempos) ---
 
   const obtenerMesesDisponibles = () => {
     const meses = historialOriginal
@@ -260,7 +299,7 @@ export default function HistorialScreen() {
   ).getTime();
   const inicioSemana = inicioHoy - 7 * 24 * 60 * 60 * 1000;
 
-  // --- LÓGICA ACTUALIZADA PARA ACEPTAR EL DÍA ESPECÍFICO ---
+  // Filtros de fecha
   if (filtroTiempo === "HOY") {
     historialFiltrado = historialOriginal.filter((item) => {
       const d = obtenerFecha(item.horaEntrada || item.createdAt);
@@ -286,6 +325,7 @@ export default function HistorialScreen() {
     });
   }
 
+  // Filtro de búsqueda (Placa o Nombre)
   if (busqueda.trim() !== "") {
     const término = busqueda.toLowerCase();
     historialFiltrado = historialFiltrado.filter((item) => {
@@ -296,6 +336,7 @@ export default function HistorialScreen() {
     });
   }
 
+  // Adaptación de los datos filtrados para el PDF
   const datosParaPDF = historialFiltrado.map((item) => {
     const placa = item.conductorId?.placa || "SIN PLACA";
     const nombre =
@@ -310,6 +351,7 @@ export default function HistorialScreen() {
     };
   });
 
+  // Agrupamos el historial por placa para no repetir el vehículo en la lista
   const vehículosAgrupados: Record<string, any> = {};
 
   historialFiltrado.forEach((item) => {
@@ -326,6 +368,10 @@ export default function HistorialScreen() {
 
   const datosListos = Object.values(vehículosAgrupados);
 
+  // ==========================================
+  // RENDERIZADO DE COMPONENTES
+  // ==========================================
+
   const renderVehiculo = ({ item }: { item: any }) => {
     const { conductor, registros, estadoActual } = item;
     const placa = conductor?.placa || "SIN PLACA";
@@ -340,6 +386,7 @@ export default function HistorialScreen() {
       <View
         className={`bg-white rounded-[24px] shadow-sm border mb-4 overflow-hidden ${estaExpandido ? "border-cyan-300" : "border-slate-100"}`}
       >
+        {/* ENCABEZADO DEL VEHÍCULO (Click para expandir) */}
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => toggleExpandir(placa)}
@@ -415,6 +462,7 @@ export default function HistorialScreen() {
           </View>
         </TouchableOpacity>
 
+        {/* DETALLE EXPANDIDO: Muestra las entradas y salidas de este vehículo */}
         {estaExpandido && (
           <View className="bg-slate-50 px-5 pb-5 pt-3 border-t border-slate-100">
             <Text className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest">
@@ -483,7 +531,7 @@ export default function HistorialScreen() {
 
   return (
     <View className="flex-1 bg-slate-50">
-      {/* ================= CABECERA MODERNA UPTAI ================= */}
+      {/* ================= CABECERA ================= */}
       <View className="pt-14 pb-8 px-6 bg-slate-900 rounded-b-[40px] shadow-xl z-20">
         <View className="flex-row items-center mb-6">
           <TouchableOpacity
@@ -522,7 +570,7 @@ export default function HistorialScreen() {
           )}
         </View>
 
-        {/* FILTROS DE TIEMPO AHORA CON DÍA ESPECÍFICO */}
+        {/* FILTROS DE TIEMPO */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -559,7 +607,6 @@ export default function HistorialScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* NUEVO BOTÓN PARA DÍA EXACTO */}
           <TouchableOpacity
             onPress={() => setMostrarCalendario(true)}
             className={`px-5 py-2.5 rounded-xl border-2 flex-row items-center ${filtroTiempo === "DIA_ESPECIFICO" ? "bg-cyan-500 border-cyan-400" : "bg-slate-800 border-slate-700"}`}

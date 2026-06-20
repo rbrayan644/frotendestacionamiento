@@ -14,7 +14,7 @@ import {
 } from "react-native";
 
 import GeneradorPDF from "./components/GeneradorPDF"; // <-- IMPORTAMOS EL COMPONENTE
-import { IP_DE_TU_PC } from "./config/api";
+import { API_URL } from "./config/api";
 
 export default function EstudiantesScreen() {
   const [estudiantes, setEstudiantes] = useState<any[]>([]);
@@ -26,7 +26,7 @@ export default function EstudiantesScreen() {
     try {
       setCargando(true);
       const respuesta = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/registros/conductores/ESTUDIANTE`,
+        `${API_URL}/registros/conductores/ESTUDIANTE`,
       );
       const datos = await respuesta.json();
 
@@ -62,12 +62,9 @@ export default function EstudiantesScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              const res = await fetch(
-                `http://${IP_DE_TU_PC}:3000/api/registros/conductor/${id}`,
-                {
-                  method: "DELETE",
-                },
-              );
+              const res = await fetch(`${API_URL}/registros/conductor/${id}`, {
+                method: "DELETE",
+              });
               if (res.ok) {
                 setEstudiantes((prev) =>
                   prev.filter((item) => item._id !== id),

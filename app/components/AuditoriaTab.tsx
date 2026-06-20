@@ -2,17 +2,17 @@ import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { IP_DE_TU_PC } from "../config/api";
+import { API_URL } from "../config/api";
 import GeneradorPDF from "./GeneradorPDF";
 
 export default function AuditoriaTab() {
@@ -33,11 +33,11 @@ export default function AuditoriaTab() {
   const cargarDatos = async () => {
     try {
       setCargando(true);
-      // Hacemos 3 peticiones al mismo tiempo para que sea rapidísimo
+      // Hacemos 3 peticiones al mismo tiempo apuntando directo a Vercel
       const [resAuditoria, resAdmins, resVig] = await Promise.all([
-        fetch(`http://${IP_DE_TU_PC}:3000/api/auditoria/SUPERADMIN`),
-        fetch(`http://${IP_DE_TU_PC}:3000/api/auth/usuarios/admins`),
-        fetch(`http://${IP_DE_TU_PC}:3000/api/auth/usuarios/vigilantes`),
+        fetch(`${API_URL}/auditoria/SUPERADMIN`),
+        fetch(`${API_URL}/auth/usuarios/admins`),
+        fetch(`${API_URL}/auth/usuarios/vigilantes`),
       ]);
 
       if (resAuditoria.ok) setLogsOriginales(await resAuditoria.json());

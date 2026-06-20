@@ -19,7 +19,7 @@ import Svg, { Circle } from "react-native-svg";
 
 import BarraTareas from "./components/BarraTareas";
 import GeneradorPDF from "./components/GeneradorPDF";
-import { IP_DE_TU_PC } from "./config/api";
+import { API_URL } from "./config/api";
 
 // --- SUB-COMPONENTE PARA EL GRÁFICO DE DONA ---
 const GraficoDona = ({
@@ -118,9 +118,7 @@ export default function AdminScreen() {
       const nombre = await AsyncStorage.getItem("userName");
       if (nombre) setNombreAdmin(nombre);
 
-      const resStats = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/registros/estadisticas`,
-      );
+      const resStats = await fetch(`${API_URL}/registros/estadisticas`);
       if (resStats.ok) {
         const datos = await resStats.json();
         setStats(datos);
@@ -159,7 +157,7 @@ export default function AdminScreen() {
       // (OPCIONAL: Aquí podrías hacer un fetch PUT a tu backend si quieres que el nombre se cambie en la base de datos también)
       /*
       const userId = await AsyncStorage.getItem("userId");
-      await fetch(`http://${IP_DE_TU_PC}:3000/api/auth/usuarios/editarNombre/${userId}`, {
+      await fetch(`${API_URL}/auth/usuarios/editarNombre/${userId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nombre: nuevoNombre }),
@@ -200,7 +198,7 @@ export default function AdminScreen() {
         <View className="flex-row justify-between items-center">
           <View>
             <Text className="text-3xl font-black text-white italic">
-              DASHBOARD
+              INICIO
             </Text>
             <View className="flex-row items-center mt-1">
               <Text className="text-cyan-400 font-medium text-sm mr-2">

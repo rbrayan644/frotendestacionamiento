@@ -1,6 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Asset } from "expo-asset";
-// Cambiamos la importación aquí para evitar el error de deprecación
 import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
@@ -20,7 +18,11 @@ export default function GeneradorPDF({
 }: Props) {
   const [generando, setGenerando] = useState(false);
 
-  const generarHTML = (logoBase64: string) => {
+  //  AQUÍ ESTÁ TU ENLACE REAL DE PRODUCCIÓN
+  const URL_MEMBRETE =
+    "https://sistemaestacionamiento.vercel.app/plantilla.jpg";
+
+  const generarHTML = () => {
     const filasTabla = datos
       .map((item, index) => {
         const placa = item.accion || "N/A";
@@ -49,18 +51,18 @@ export default function GeneradorPDF({
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
           body { font-family: 'Helvetica', Arial, sans-serif; color: #1e293b; padding: 0; margin: 0; }
-          .contenedor { padding: 40px; }
-          .cinta-bandera { display: flex; height: 6px; width: 100%; }
-          .cinta-amarilla { flex: 1; background-color: #facc15; }
-          .cinta-azul { flex: 1; background-color: #0284c7; }
-          .cinta-roja { flex: 1; background-color: #e11d48; }
-          .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 2px solid #f1f5f9; margin-bottom: 30px; }
-          .header-izq { flex: 2; }
-          .gov-title-small { font-size: 10px; color: #64748b; text-transform: uppercase; margin: 0; }
-          .gov-title-main { font-size: 13px; color: #0f172a; font-weight: 900; line-height: 1.2; margin: 4px 0 0 0; }
-          .uni-name { color: #0369a1; font-size: 11px; margin-top: 2px; font-weight: 700; }
-          .header-der { flex: 1; text-align: right; }
-          .logo-instituto { height: 75px; width: auto; object-fit: contain; }
+          
+          /* ESTILOS DEL NUEVO MEMBRETE */
+          .banner-institucional { 
+            width: 100%; 
+            height: auto; 
+            object-fit: contain; 
+            padding: 20px 40px 0 40px; 
+            box-sizing: border-box;
+          }
+          
+          .contenedor { padding: 20px 40px 40px 40px; }
+          
           .titulo-contenedor { text-align: center; margin-bottom: 30px; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; }
           .titulo { color: #0f172a; font-size: 18px; font-weight: 900; text-transform: uppercase; margin: 0; }
           .subtitulo { font-size: 12px; color: #64748b; margin: 5px 0 0 0; }
@@ -73,22 +75,10 @@ export default function GeneradorPDF({
         </style>
       </head>
       <body>
-        <div class="cinta-bandera">
-          <div class="cinta-amarilla"></div>
-          <div class="cinta-azul"></div>
-          <div class="cinta-roja"></div>
-        </div>
+        
+        <img src="${URL_MEMBRETE}" class="banner-institucional" alt="Membrete Oficial" />
+        
         <div class="contenedor">
-          <div class="header">
-            <div class="header-izq">
-              <p class="gov-title-small">República Bolivariana de Venezuela</p>
-              <p class="gov-title-main">Ministerio del Poder Popular para la<br>Educación Universitaria</p>
-              <p class="uni-name">U.P.T. Agroindustrial del Estado Táchira</p>
-            </div>
-            <div class="header-der">
-              <img src="data:image/png;base64,${logoBase64}" class="logo-instituto" alt="logo" />
-            </div>
-          </div>
           <div class="titulo-contenedor">
             <p class="titulo">${tipoReporte}</p>
             <p class="subtitulo">Responsable: <strong>${nombreUsuario}</strong></p>
@@ -124,27 +114,27 @@ export default function GeneradorPDF({
     setGenerando(true);
 
     try {
-      // 1. Cargar el asset correctamente
-      const asset = Asset.fromModule(require("../assets/logo.png"));
-      await asset.downloadAsync();
-
-      // Buscamos la ruta local generada por Expo
-      const uri = asset.localUri || asset.uri;
-
-      if (!uri) {
-        throw new Error("No se pudo localizar la ruta del logo.");
-      }
-
-      // 2. Leer a Base64 usando la API de legado para mantener compatibilidad
-      const logoBase64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: "base64",
-      });
-
-      // 3. Generar y compartir PDF
-      const html = generarHTML(logoBase64);
+      // 1. Generamos el PDF temporal usando el HTML (ya tiene la URL inyectada)
+      const html = generarHTML();
       const { uri: pdfUri } = await Print.printToFileAsync({ html });
 
-      await Sharing.shareAsync(pdfUri, {
+      // 2. CAMBIO DE NOMBRE PERSONALIZADO:
+      const tipoLimpio = tipoReporte
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "_")
+        .replace(/_+/g, "_");
+
+      const nombreArchivo = `reporte_uptaiet_${tipoLimpio}.pdf`;
+      const targetUri = `${FileSystem.cacheDirectory}${nombreArchivo}`;
+
+      // 3. Renombramos el archivo moviéndolo a la nueva ruta
+      await FileSystem.moveAsync({
+        from: pdfUri,
+        to: targetUri,
+      });
+
+      // 4. Compartimos el archivo con el nombre ya corregido
+      await Sharing.shareAsync(targetUri, {
         mimeType: "application/pdf",
         dialogTitle: "Compartir Reporte Oficial",
         UTI: "com.adobe.pdf",
@@ -153,7 +143,7 @@ export default function GeneradorPDF({
       console.error("Error PDF:", error);
       Alert.alert(
         "Error",
-        "Hubo un problema al generar el PDF. Verifica que el archivo existe en 'app/assets/logo.png'.",
+        "Hubo un problema al generar el PDF. Revisa la consola para más detalles.",
       );
     } finally {
       setGenerando(false);

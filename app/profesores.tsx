@@ -14,19 +14,30 @@ import {
 } from "react-native";
 
 import GeneradorPDF from "./components/GeneradorPDF"; // <-- IMPORTAMOS EL COMPONENTE
-import { IP_DE_TU_PC } from "./config/api";
+import { API_URL } from "./config/api"; // <-- ACTUALIZADO A LA NUBE
 
 export default function ProfesoresScreen() {
+  // ==========================================
+  // ESTADOS GLOBALES DE LA PANTALLA
+  // ==========================================
   const [profesores, setProfesores] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState("");
   const [nombreAdmin, setNombreAdmin] = useState("Administrador"); // <-- PARA LA FIRMA DEL PDF
 
+  // ==========================================
+  // FUNCIONES PRINCIPALES
+  // ==========================================
+
+  /**
+   * Carga la lista completa de conductores que tienen el rol de "PROFESOR"
+   * directamente desde la base de datos en Vercel.
+   */
   const cargarProfesores = async () => {
     try {
       setCargando(true);
       const respuesta = await fetch(
-        `http://${IP_DE_TU_PC}:3000/api/registros/conductores/PROFESOR`,
+        `${API_URL}/registros/conductores/PROFESOR`,
       );
       const datos = await respuesta.json();
 
@@ -40,14 +51,18 @@ export default function ProfesoresScreen() {
     }
   };
 
+  // Se ejecuta al cargar la pantalla por primera vez
   useEffect(() => {
     cargarProfesores();
-    // Buscamos el nombre del usuario logueado
+    // Buscamos el nombre del usuario logueado para que el PDF salga firmado por él
     AsyncStorage.getItem("userName").then((nombre) => {
       if (nombre) setNombreAdmin(nombre);
     });
   }, []);
 
+  /**
+   * Muestra una alerta de confirmación antes de eliminar permanentemente a un profesor.
+   */
   const confirmarEliminar = (id: string, nombreCompleto: string) => {
     Alert.alert(
       "Eliminar Profesor",
@@ -59,13 +74,11 @@ export default function ProfesoresScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              const res = await fetch(
-                `http://${IP_DE_TU_PC}:3000/api/registros/conductor/${id}`,
-                {
-                  method: "DELETE",
-                },
-              );
+              const res = await fetch(`${API_URL}/registros/conductor/${id}`, {
+                method: "DELETE",
+              });
               if (res.ok) {
+                // Actualizamos la lista localmente sin tener que recargar toda la base de datos
                 setProfesores((prev) => prev.filter((item) => item._id !== id));
                 Alert.alert("Éxito", "Profesor eliminado del sistema.");
               } else {
@@ -80,6 +93,11 @@ export default function ProfesoresScreen() {
     );
   };
 
+  // ==========================================
+  // LÓGICA DE FILTRADO Y EXPORTACIÓN
+  // ==========================================
+
+  // Filtra la lista en tiempo real basado en lo que el usuario escriba en el buscador
   const profesoresFiltrados = profesores.filter((prof) => {
     const termino = busqueda.toLowerCase();
     const nombreCompleto = `${prof.nombres} ${prof.apellidos}`.toLowerCase();
@@ -102,6 +120,10 @@ export default function ProfesoresScreen() {
     createdAt: p.createdAt || new Date().toISOString(),
   }));
 
+  // ==========================================
+  // RENDERIZADO DE COMPONENTES DE LA LISTA
+  // ==========================================
+
   const renderProfesor = ({ item }: { item: any }) => {
     const esMoto = item.tipoVehiculo === "MOTO";
     const nombreCompleto = `${item.nombres} ${item.apellidos}`;
@@ -109,6 +131,7 @@ export default function ProfesoresScreen() {
     return (
       <View className="bg-white rounded-3xl shadow-sm border border-slate-100 mb-5 overflow-hidden">
         <View className="p-5 flex-row items-center">
+          {/* ICONO DEL VEHÍCULO */}
           <View
             className={`w-14 h-14 rounded-2xl justify-center items-center mr-4 border ${esMoto ? "bg-amber-50 border-amber-100" : "bg-emerald-50 border-emerald-100"}`}
           >
@@ -123,6 +146,7 @@ export default function ProfesoresScreen() {
             )}
           </View>
 
+          {/* DATOS DEL PROFESOR */}
           <View className="flex-1">
             <Text
               className="text-lg font-black text-slate-800"
@@ -150,6 +174,7 @@ export default function ProfesoresScreen() {
               )}
             </View>
 
+            {/* ESTADO DEL CARNET QR */}
             <View className="mt-1 flex-row items-center">
               <Ionicons
                 name={item.qrCarnet ? "id-card" : "id-card-outline"}
@@ -165,6 +190,7 @@ export default function ProfesoresScreen() {
           </View>
         </View>
 
+        {/* 👇 BOTÓN ROJO PARA ELIMINAR 👇 */}
         <TouchableOpacity
           onPress={() => confirmarEliminar(item._id, nombreCompleto)}
           className="bg-rose-50 py-3 flex-row justify-center items-center border-t border-rose-100 active:bg-rose-100"
@@ -178,6 +204,9 @@ export default function ProfesoresScreen() {
     );
   };
 
+  // ==========================================
+  // INTERFAZ GRÁFICA PRINCIPAL (UI)
+  // ==========================================
   return (
     <View className="flex-1 bg-slate-50">
       {/* ================= CABECERA MODERNA UPTAI ================= */}
@@ -208,6 +237,7 @@ export default function ProfesoresScreen() {
           </View>
         </View>
 
+        {/* BARRA DE BÚSQUEDA */}
         <View className="flex-row items-center bg-slate-800 border border-slate-700 rounded-2xl px-5 py-3 shadow-inner">
           <Ionicons name="search" size={20} color="#94a3b8" />
           <TextInput
@@ -225,6 +255,7 @@ export default function ProfesoresScreen() {
         </View>
       </View>
 
+      {/* LISTADO O SPINNER DE CARGA */}
       {cargando ? (
         <ActivityIndicator size="large" color="#10b981" className="mt-16" />
       ) : (
