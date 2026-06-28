@@ -6,6 +6,7 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -88,8 +89,21 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         {/* ================= LOGO Y ENCABEZADO UPTAI ================= */}
         <View className="items-center justify-center pt-24 pb-12 px-6">
-          <View className="flex-row items-center">
-            <Text className="text-7xl font-black text-white tracking-tighter">
+          <View className="flex-row items-center justify-center mb-2">
+            {/* 2. AGREGAMOS EL LOGO AQUÍ */}
+            <Image
+              source={require("../../assets/images/splash.png")}
+              style={{
+                width: 55,
+                height: 55,
+                marginRight: 12,
+                borderRadius: 10,
+              }}
+              resizeMode="contain"
+            />
+
+            {/* TAMAÑO DE LETRA AJUSTADO PARA QUE QUEPA CON EL LOGO (text-5xl) */}
+            <Text className="text-5xl font-black text-white tracking-widest">
               UPTAIET
             </Text>
           </View>

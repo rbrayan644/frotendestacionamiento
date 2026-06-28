@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   Text,
   TouchableOpacity,
   View,
@@ -278,17 +279,33 @@ export default function SuperAdminScreen() {
     <View className="flex-1 bg-slate-50">
       <View className="pt-14 pb-6 px-4 bg-slate-900 rounded-b-[40px] shadow-xl z-20">
         <View className="flex-row justify-between items-center mb-6 px-2">
-          <View>
-            <View className="flex-row items-center">
-              <Text className="text-3xl font-black text-white tracking-tight">
-                UPTAIET
+          {/* LADO IZQUIERDO: Logo Institucional + Títulos */}
+          <View className="flex-row items-center">
+            {/* 2. AGREGAMOS EL LOGO DE LA INSTITUCIÓN AQUÍ */}
+            <Image
+              source={require("../assets/images/splash.png")}
+              style={{
+                width: 50,
+                height: 50,
+                marginRight: 15,
+                borderRadius: 12,
+              }}
+              resizeMode="contain"
+            />
+
+            <View>
+              <View className="flex-row items-center">
+                <Text className="text-3xl font-black text-white tracking-tight">
+                  UPTAIET
+                </Text>
+                <View className="bg-yellow-400 px-2 py-0.5 ml-1 rounded-md"></View>
+              </View>
+              <Text className="text-purple-400 font-medium text-sm mt-1 tracking-wide">
+                Panel de Super Admin
               </Text>
-              <View className="bg-yellow-400 px-2 py-0.5 ml-1 rounded-md"></View>
             </View>
-            <Text className="text-purple-400 font-medium text-sm mt-1 tracking-wide">
-              Panel de Super Admin
-            </Text>
           </View>
+
           <TouchableOpacity
             onPress={cerrarSesion}
             className="bg-slate-800 p-3 rounded-full border border-slate-700"

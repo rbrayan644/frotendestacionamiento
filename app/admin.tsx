@@ -6,6 +6,7 @@ import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image, // <-- 1. IMPORTAMOS IMAGE AQUÍ
   Modal,
   RefreshControl,
   ScrollView,
@@ -149,20 +150,9 @@ export default function AdminScreen() {
     }
 
     try {
-      // 1. Guardarlo en la memoria del celular
       await AsyncStorage.setItem("userName", nuevoNombre);
       setNombreAdmin(nuevoNombre);
       setModalNombreVisible(false);
-
-      // (OPCIONAL: Aquí podrías hacer un fetch PUT a tu backend si quieres que el nombre se cambie en la base de datos también)
-      /*
-      const userId = await AsyncStorage.getItem("userId");
-      await fetch(`${API_URL}/auth/usuarios/editarNombre/${userId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: nuevoNombre }),
-      });
-      */
     } catch (error) {
       Alert.alert("Error", "No se pudo guardar el nombre");
     }
@@ -196,25 +186,42 @@ export default function AdminScreen() {
       {/* CABECERA */}
       <View className="pt-14 pb-8 px-6 bg-slate-900 rounded-b-[40px] shadow-xl z-20">
         <View className="flex-row justify-between items-center">
-          <View>
-            <Text className="text-3xl font-black text-white italic">
-              INICIO
-            </Text>
-            <View className="flex-row items-center mt-1">
-              <Text className="text-cyan-400 font-medium text-sm mr-2">
-                Hola, {nombreAdmin}
+          {/* LADO IZQUIERDO DEL ENCABEZADO: Logo + Textos */}
+          <View className="flex-row items-center">
+            {/* 2. AGREGAMOS EL LOGO DE LA INSTITUCIÓN AQUÍ */}
+            <Image
+              source={require("../assets/images/splash.png")}
+              style={{
+                width: 50,
+                height: 50,
+                marginRight: 15,
+                borderRadius: 12,
+              }}
+              resizeMode="contain"
+            />
+
+            <View>
+              <Text className="text-3xl font-black text-white italic tracking-widest">
+                INICIO
               </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setNuevoNombre(nombreAdmin);
-                  setModalNombreVisible(true);
-                }}
-                className="bg-slate-800 p-1.5 rounded-full"
-              >
-                <Ionicons name="pencil" size={12} color="#22d3ee" />
-              </TouchableOpacity>
+              <View className="flex-row items-center mt-1">
+                <Text className="text-cyan-400 font-medium text-sm mr-2">
+                  Hola, {nombreAdmin}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setNuevoNombre(nombreAdmin);
+                    setModalNombreVisible(true);
+                  }}
+                  className="bg-slate-800 p-1.5 rounded-full"
+                >
+                  <Ionicons name="pencil" size={12} color="#22d3ee" />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
+
+          {/* BOTÓN DE CERRAR SESIÓN (Lado derecho) */}
           <TouchableOpacity
             onPress={cerrarSesion}
             className="bg-slate-800 p-3 rounded-full border border-slate-700"
